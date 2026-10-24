@@ -78,7 +78,7 @@ def build(preview, config, profile):
 
     if preview:
         webapp.preview(app, OUT)
-        print('Preview: open out/tizen/index.html (or serve out/tizen) in a browser.')
+        print('Preview: python3 -m http.server -d out/tizen, then open http://localhost:8000 (opened as a file, the symbols stay blank).')
     print('Built %s (%s %s, %d KB, %s)' % (os.path.basename(WGT), app_id, version, os.path.getsize(WGT) // 1024,
                                            'signed with "%s"' % profile if profile else 'not signed'))
     if not config['tmdbKey']:

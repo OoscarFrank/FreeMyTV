@@ -62,18 +62,14 @@
 
   /** Shelf apps in this order when installed, like the Android app: key, LG app id, name on the TV, brand gradient. */
   var SHELF = [
-    ['netflix', /^netflix$/, /netflix/i, ['#0A0A0A', '#000000']],
     ['youtube', /youtube/, /^youtube$/i, ['#1C1C1E', '#09090A']],
+    ['netflix', /^netflix$/, /netflix/i, ['#0A0A0A', '#000000']],
+    ['canal', /canal/, /^(my)?canal\+?$/i, ['#1C1C1E', '#000000']],
     ['prime', /^amazon$/, /prime video|amazon/i, ['#2AA8FF', '#0A68D4']],
-    ['disney', /disney/, /disney/i, ['#173584', '#08143F']],
-    ['max', /hbo|wbd/, /^(hbo )?max$|hbo max/i, ['#5C30E8', '#221684']],
-    ['appletv', /appletv|apple\.tv/, /apple tv/i, ['#1C1C1E', '#000000']],
+    ['browser', /browser/, /browser|navigateur/i, ['#3A7BD5', '#1E4C94']],
     ['hulu', /^hulu/, /hulu/i, ['#1CE783', '#0B8F4E']],
-    ['paramount', /paramount|cbs/, /paramount/i, ['#0064FF', '#002A86']],
     ['peacock', /peacock/, /peacock/i, ['#1C1C1E', '#000000']],
-    ['nfl', /nfl/, /^nfl/i, ['#013369', '#00163D']],
-    ['globoplay', /globoplay/, /globoplay/i, ['#FF8A1F', '#FF2D5A']],
-    ['spotify', /spotify/, /spotify/i, ['#1DB954', '#0F7A36']]
+    ['nfl', /nfl/, /^nfl/i, ['#013369', '#00163D']]
   ];
   var MAX_SHELF = 8;
 
@@ -276,14 +272,36 @@
     img.src = url;
   }
 
+  /** Without picks: the date, the time and the weather, centred over the sky's colors for the hour. */
   function renderClock() {
     var d = new Date(), c = $('clock');
-    c.firstChild.textContent = Data.time(d.getTime());
+    c.children[1].textContent = Data.time(d.getTime()).replace(/ (AM|PM)$/, '');   // as Android's clock, h:mm
     try {
-      c.lastChild.textContent = d.toLocaleDateString(I18N.locale(), {weekday: 'long', day: 'numeric', month: 'long'});
+      c.firstChild.textContent = d.toLocaleDateString(I18N.locale(), {weekday: 'long', day: 'numeric', month: 'long'});
     } catch (e) {
-      c.lastChild.textContent = d.toDateString();
+      c.firstChild.textContent = d.toDateString();
     }
+    var line = c.lastChild, w = Data.weather;
+    line.innerHTML = '';
+    if (Prefs.weather() && w && !isNaN(w.temp)) {
+      sym(Data.symbol(w.code, w.isDay), line);
+      line.appendChild(document.createTextNode(Data.degrees(w.temp) + '  ' + Data.condition(w.code, w.isDay) + '  ·  ' +
+        (I18N.lang === 'ru' ? 'Макс. ' + Data.degrees(w.max) + '  Мин. ' + Data.degrees(w.min) :
+          tr('Máx. ' + Data.degrees(w.max) + '  Mín. ' + Data.degrees(w.min), 'H:' + Data.degrees(w.max) + '  L:' + Data.degrees(w.min),
+            'Máx. ' + Data.degrees(w.max) + '  Mín. ' + Data.degrees(w.min)))));
+    }
+    var sky = Data.sky(d.getTime()), hour = document.querySelector('#sky .hour');
+    function hex(n) { return '#' + (0x1000000 + n).toString(16).slice(1); }
+    // The bottom tone a little lighter; the sun's glow fainter in dark skies.
+    var low = 0, bright = 0;
+    for (var s = 16; s >= 0; s -= 8) {
+      var v = (sky[2] >> s) & 255;
+      low |= Math.round(v + (255 - v) * 0.25) << s;
+    }
+    for (var i = 0; i < 3; i++) bright = Math.max(bright, (0.2126 * (sky[i] >> 16 & 255) + 0.7152 * (sky[i] >> 8 & 255) + 0.0722 * (sky[i] & 255)) / 255);
+    hour.style.background = '-webkit-linear-gradient(top, ' + hex(sky[0]) + ', ' + hex(sky[1]) + ' 60%, ' + hex(low) + ')';
+    hour.style.background = 'linear-gradient(' + hex(sky[0]) + ', ' + hex(sky[1]) + ' 60%, ' + hex(low) + ')';
+    hour.firstChild.style.opacity = ((0.15 + 0.6 * bright) * (Data.isNight(d.getTime()) ? 0.4 : 1)).toFixed(2);
   }
 
   // MARK: - Shelf
@@ -651,6 +669,9 @@
     }
   }
 
+  /** Without picks the tabs are hidden: the top row is only the round buttons. */
+  function noTabs() { return /(^| )no-picks( |$)/.test(body.className); }
+
   function selectTab(i) {
     if (i === st.tab) return;
     st.tab = i;
@@ -665,7 +686,7 @@
         else if (dy > 0) { openDrawer(); return; }
         else if (dy < 0) {
           if (cards.length) { st.zone = Z.CARDS; st.card = nearest(cardNodes, centerX(tiles[st.shelf])); }
-          else { st.zone = Z.TOP; st.top = st.tab; }
+          else { st.zone = Z.TOP; st.top = noTabs() ? 3 : st.tab; }
         }
         break;
       case Z.CARDS:
@@ -675,7 +696,7 @@
         break;
       case Z.TOP:
         if (dx) {
-          st.top = Math.max(0, Math.min(5, st.top + dx));
+          st.top = Math.max(noTabs() ? 3 : 0, Math.min(5, st.top + dx));
           if (st.top < 3) selectTab(st.top);   // as on Apple TV: focusing a tab selects it
         } else if (dy > 0) {
           if (cards.length) { st.zone = Z.CARDS; st.card = Math.min(cards.length - 1, st.top < 3 ? 0 : cards.length - 1); }
@@ -748,6 +769,7 @@
 
   function checkNight() {
     setClass(body, 'night', Data.isNight(Date.now()));
+    renderClock();   // the sun's glow follows the theme
   }
 
   var saverOn = false, idleAt = Date.now(), saverIndex = 0, saverTimer = 0, SAVER_AFTER = 5 * 60000;

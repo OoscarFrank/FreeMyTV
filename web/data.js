@@ -530,6 +530,34 @@ var Data = (function () {
       return mins < rise || mins >= set;
     },
 
+    /**
+     * The sky's three colors (top, middle, bottom) for the sun's position, as Shaders.sky on Android: night, dawn, day,
+     * sunset, dusk, from the last forecast's sunrise and sunset (without one, 5:30 and 17:40).
+     */
+    sky: function (at) {
+      var NIGHT = [0x070B1E, 0x16225A, 0x4B2F8F], DAWN = [0x24183F, 0xE89A55, 0xF6D59A], DAY = [0x1E57C8, 0x4FB9EC, 0x9EE2EE],
+        SUNSET = [0x2E1650, 0xE2546C, 0xF39A4F], DUSK = [0x10173A, 0x36348A, 0x8A4BB0];
+      var d = new Date(at), mins = d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+      function hm(t, fallback) { if (!t) return fallback; var x = new Date(t); return x.getHours() * 60 + x.getMinutes(); }
+      var rise = hm(weather && weather.sunrise, 330), set = hm(weather && weather.sunset, 1060);
+      var times = [rise - 60, rise - 15, rise + 45, set - 45, set, set + 45, set + 105];
+      var keys = [NIGHT, DAWN, DAY, DAY, SUNSET, DUSK, NIGHT];
+      function mix(a, b, f) {
+        var out = 0;
+        for (var s = 16; s >= 0; s -= 8) out |= Math.round(((a >> s) & 255) + (((b >> s) & 255) - ((a >> s) & 255)) * f) << s;
+        return out;
+      }
+      var c = NIGHT;
+      for (var i = 0; i < times.length - 1; i++) {
+        if (mins >= times[i] && mins < times[i + 1]) {
+          var f = (mins - times[i]) / (times[i + 1] - times[i]);
+          c = [mix(keys[i][0], keys[i + 1][0], f), mix(keys[i][1], keys[i + 1][1], f), mix(keys[i][2], keys[i + 1][2], f)];
+          break;
+        }
+      }
+      return c;
+    },
+
     compact: function (v) {
       if (isNaN(v)) return '—';
       if (v >= 10000) return fmt(v / 1000, 1) + 'k';

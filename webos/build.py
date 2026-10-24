@@ -90,7 +90,7 @@ def build(preview, config):
 
     if preview:
         webapp.preview(app, OUT)
-        print('Preview: open out/webos/index.html (or serve out/webos) in a browser.')
+        print('Preview: python3 -m http.server -d out/webos, then open http://localhost:8000 (opened as a file, the symbols stay blank).')
     print('Built %s (%s %s, %d KB)' % (os.path.basename(IPK), app_id, version, len(data) // 1024))
     if not config['tmdbKey']:
         print('No TMDB key: the picks stay off (everything else works).')

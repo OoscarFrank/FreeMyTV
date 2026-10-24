@@ -12,6 +12,7 @@ import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -94,7 +95,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final float L_TITLE_BASE = 130, L_TABBAR_TOP = 158, L_TABBAR_H = 68, L_CARDS_TOP = 262, L_CARD_H = 442;
     private static final float L_TALL_W = 320, L_CARD_GAP = 40, L_BUTTON = 68, L_BUTTON_GAP = 20, L_BUTTON_CY = 103;
     private static final float L_PLATTER_TOP = 814, L_TILE_H = 126;
-    private static final float L_DATE_BASE = 330, L_CLOCK_BASE = 540, L_WEATHER_BASE = 626, L_QUOTES_BASE = 694;
+    // Without picks: the date, the time and the weather centred over a sky that follows the hour.
+    private static final float L_DATE_BASE = 176, L_CLOCK_BASE = 478, L_WEATHER_BASE = 567, L_QUOTES_BASE = 660;
     private static final int L_INK = 0xFF1D1D1F, L_DIM = 0xFF6E6E73, L_FAINT = 0xFF8E8E93;
     private static String[] tabs;
     private static int tabsGeneration = -1;
@@ -142,7 +144,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final RectF[] cardRects = new RectF[3];
     private final List<HomeApps.Item> lightButtons = new ArrayList<>();
     private Paint lTitle, lTab, lTabOn, lCardTitle, lCardMeta, lQuote, lTip, lDate, lClock, lWeather, lClockQuote;
-    private Shader lightGradient;
+    private Shader lightGradient, clockSky, clockGlow;
+    private int clockSkyTop, clockSkyMid, clockSkyBottom;
+    private float weatherLineWidth;
 
     // Shelf
     private List<HomeApps.Item> shelf = new ArrayList<>();
@@ -156,6 +160,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         TILE_STYLE.put("youtube", new int[] {0xFF1C1C1E, 0xFF09090A, 0});
         TILE_STYLE.put("globoplay", new int[] {0xFFFF8A1F, 0xFFFF2D5A, 1});
         TILE_STYLE.put("prime", new int[] {0xFF2AA8FF, 0xFF0A68D4, 1});
+        TILE_STYLE.put("canal", new int[] {0xFF1C1C1E, 0xFF000000, 1});
         TILE_STYLE.put("disney", new int[] {0xFF173584, 0xFF08143F, 0});
         TILE_STYLE.put("max", new int[] {0xFF5C30E8, 0xFF221684, 0});
         TILE_STYLE.put("appletv", new int[] {0xFF1C1C1E, 0xFF000000, 0});
@@ -579,12 +584,17 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lQuote = Ui.numbers(Ui.regular, 21 * k, L_FAINT);
         lTip = Ui.text(Ui.semibold, 25 * k, L_INK);
         lTip.setTextAlign(Paint.Align.CENTER);
-        lDate = Ui.text(Ui.semibold, 34 * k, L_DIM);
-        lClock = Ui.numbers(Ui.light, 200 * k, L_INK);
-        lClock.setLetterSpacing(-0.01f);
-        lWeather = Ui.text(Ui.medium, 34 * k, L_DIM);
-        lClockQuote = Ui.numbers(Ui.medium, 28 * k, L_DIM);
+        lDate = Ui.text(Ui.semibold, 30 * k, 0xE6FFFFFF);
+        lDate.setLetterSpacing(0.22f);
+        lDate.setTextAlign(Paint.Align.CENTER);
+        lClock = Ui.numbers(Ui.hairline, 330 * k, 0xFFFFFFFF);
+        lClock.setLetterSpacing(-0.04f);
+        lClock.setTextAlign(Paint.Align.CENTER);
+        lWeather = Ui.text(Ui.regular, 34 * k, 0xEBFFFFFF);
+        lClockQuote = Ui.numbers(Ui.medium, 28 * k, 0xD9FFFFFF);
         lightGradient = null;
+        clockSky = null;
+        weatherLineAt = -1;
         buttonPaint = Ui.text(Ui.semibold, 29 * k, INK);
         capsuleText = Ui.numbers(Ui.medium, 29 * k, 0xF2FFFFFF);
         tipPaint = Ui.text(Ui.semibold, 25 * k, 0xF2FFFFFF);
@@ -672,7 +682,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 refreshHero(false);
                 heroLayer.invalidate();
             }
-            if (!picksOn()) heroLayer.invalidate();
+            if (!picksOn()) {
+                heroLayer.invalidate();
+                sky.invalidate();
+            }
         }
 
         // Busy: something is moving, or the sheet or the drawer is open.
@@ -731,7 +744,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (minute == clockMinute || clockPaint == null) return false;
         clockMinute = minute;
         clockText = Ui.clock(now);
-        dateText = Ui.date(now);
+        dateText = Ui.date(now).toUpperCase(Ui.locale());
         return true;
     }
 
@@ -940,10 +953,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lCardMeta.setColor(tone(L_DIM, 0xFF98989D));
         lQuote.setColor(tone(L_FAINT, 0xB8FFFFFF));
         lTip.setColor(tone(L_INK, WHITE));
-        lDate.setColor(tone(L_DIM, 0xFF98989D));
-        lClock.setColor(tone(L_INK, WHITE));
-        lWeather.setColor(tone(L_DIM, 0xFF98989D));
-        lClockQuote.setColor(tone(L_DIM, 0xFF98989D));
         staleQuote.setColor(tone(L_FAINT, 0x99FFFFFF));
     }
 
@@ -1214,7 +1223,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float cap = q.cap, gap = (clock ? 8 : 6) * k, spacing = (clock ? 32 : 24) * k;
         float total = spacing * (n - 1);
         for (int i = 0; i < n; i++) total += q.glyphs[i] + gap + q.widths[i];
-        float x = clock ? MARGIN * k : right - total;
+        float x = clock ? (w - total) / 2f : right - total;
         int coinColor = clock ? text.getColor() : Ui.alpha(tone(0xB38E8E93, 0x8CFFFFFF), fade);
         for (int i = 0; i < n; i++) {
             Glyphs.coin(getContext(), c, HomeData.COINS[coins[i]], x + q.glyphs[i] / 2, base - cap / 2, cap, coinColor);
@@ -2652,6 +2661,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean fading = bgFadeAt != 0;
         // Drawer open: the background lightens (by day) or darkens (at night), as a filter on the drawing itself.
         android.graphics.ColorFilter v = veil(tone(0.32f, 0.42f) * Ui.clamp(drawer.value), blend(0xFFFFFFFF, 0xFF000000, night));
+        if (!picksOn()) {
+            drawClockSky(c, v);
+            return;
+        }
         if (bgTo == null || (fading && bgFrom == null)) {
             if (lightGradient == null) lightGradient = new LinearGradient(0, 0, 0, h, 0xFFF5F5F7, 0xFFE2E2E7, Shader.TileMode.CLAMP);
             if (nightGradient == null) nightGradient = new LinearGradient(0, 0, 0, h, 0xFF1C1C1E, 0xFF0B0B0D, Shader.TileMode.CLAMP);
@@ -2674,6 +2687,38 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (fading && bgFrom != null) drawLightImage(c, bgFrom, bgTo == null ? 1 - e : 1);
         if (bgTo != null) drawLightImage(c, bgTo, fading ? e : 1);
         imagePaint.setColorFilter(null);
+    }
+
+    /** Without picks: the sky's colors for the hour (Shaders.sky), with the sun's glow behind the clock. */
+    private void drawClockSky(Canvas c, android.graphics.ColorFilter v) {
+        Shaders.Palette p = scene.palette;
+        int top = p.color(0), mid = p.color(1), bottom = p.color(2);
+        if (clockSky == null || top != clockSkyTop || mid != clockSkyMid || bottom != clockSkyBottom) {
+            clockSkyTop = top;
+            clockSkyMid = mid;
+            clockSkyBottom = bottom;
+            // Light tones lighten further to the bottom, as in the mockup; the glow is fainter in dark skies.
+            int low = blend(bottom, 0xFFFFFFFF, 0.25f);
+            clockSky = new LinearGradient(0, 0, 0, h, new int[] {top, mid, low}, new float[] {0, 0.6f, 1}, Shader.TileMode.CLAMP);
+            int glow = Ui.alpha(0xFFFFF0C8, 0.15f + 0.6f * p.brightest());
+            clockGlow = new RadialGradient(w / 2f, h * 0.3f, w * 0.32f, new int[] {glow, glow & 0x00FFFFFF},
+                    null, Shader.TileMode.CLAMP);
+        }
+        fill.setColorFilter(v);
+        fill.setColor(0xFF000000);
+        fill.setShader(clockSky);
+        c.drawRect(screen, fill);
+        fill.setShader(clockGlow);
+        fill.setAlpha(Math.round(255 * (1 - 0.6f * night)));
+        c.drawRect(screen, fill);
+        fill.setAlpha(255);
+        fill.setShader(null);
+        // Dark theme (or night): the same sky, much deeper, glow included.
+        if (night > 0.001f) {
+            fill.setColor(Ui.alpha(0xFF05060A, 0.72f * night));
+            c.drawRect(screen, fill);
+        }
+        fill.setColorFilter(null);
     }
 
     private void drawLightImage(Canvas c, Backdrop b, float alpha) {
@@ -2726,23 +2771,24 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void drawClock(Canvas c) {
-        float x = MARGIN * k;
-        c.drawText(dateText, x - Ui.leftBearing(lDate, dateText), L_DATE_BASE * k, lDate);
-        c.drawText(clockText, x - Ui.leftBearing(lClock, clockText), L_CLOCK_BASE * k, lClock);
+        float x = w / 2f;
+        c.drawText(dateText, x, L_DATE_BASE * k, lDate);
+        c.drawText(clockText, x, L_CLOCK_BASE * k, lClock);
         HomeData.Weather wx = data.weather;
         if (!Prefs.weather() || Double.isNaN(wx.temp)) return;
         if (data.weatherAt != weatherLineAt || Prefs.version != weatherLinePrefs || !Ui.language.equals(weatherLineLanguage)) {
             weatherLineAt = data.weatherAt;
             weatherLinePrefs = Prefs.version;
             weatherLineLanguage = Ui.language;
-            weatherLine = HomeData.degrees(wx.temp) + "  " + HomeData.condition(wx.code, wx.isDay) + "   "
+            weatherLine = HomeData.degrees(wx.temp) + "  " + HomeData.condition(wx.code, wx.isDay) + "  ·  "
                     + HomeData.highLow(wx, "  ");
+            weatherLineWidth = lWeather.measureText(weatherLine);
         }
         float size = 40 * k, base = L_WEATHER_BASE * k;
         String symbol = Symbols.weather(wx.code, wx.isDay);
-        float sw = Symbols.width(getContext(), symbol, size);
-        Symbols.draw(getContext(), c, symbol, x + sw / 2, base - Ui.halfCap(lWeather), size, lWeather.getColor());
-        c.drawText(weatherLine, x + sw + 16 * k, base, lWeather);
+        float sw = Symbols.width(getContext(), symbol, size), left = x - (sw + 16 * k + weatherLineWidth) / 2;
+        Symbols.draw(getContext(), c, symbol, left + sw / 2, base - Ui.halfCap(lWeather), size, lWeather.getColor());
+        c.drawText(weatherLine, left + sw + 16 * k, base, lWeather);
     }
 
     /**

@@ -264,22 +264,33 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .night .card .name { color: #F5F5F7; }
 .night .card .meta { color: rgba(245, 245, 247, 0.62); }
 
-/* Without a TMDB key (or picks yet): the date and the time instead of the cards. */
+/* Without a TMDB key (or picks yet): the date, the time and the weather centred over the sky's colors for the hour. */
 #clock {
   position: absolute;
-  left: 76px;
-  top: 300px;
-  font-size: 176px;
-  font-weight: 200;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  color: #1D1D1F;
+  left: 0;
+  top: 150px;
+  width: 1920px;
+  text-align: center;
+  color: #FFF;
   display: none;
 }
-#clock .date { display: block; font-size: 40px; font-weight: 500; letter-spacing: 0; margin-top: 18px; color: #6E6E73; }
+#clock .date { font-size: 30px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.9); }
+#clock .time { font-size: 330px; font-weight: 100; line-height: 1; letter-spacing: -0.04em; margin-top: 10px; font-feature-settings: 'tnum'; }
+#clock .wx { height: 40px; font-size: 34px; font-weight: 400; margin-top: 18px; color: rgba(255, 255, 255, 0.92); white-space: pre; }
+#clock .wx .sym { width: 40px; height: 40px; vertical-align: -8px; margin-right: 16px; }
 .no-picks #clock { display: block; }
-.night #clock { color: #F5F5F7; }
-.night #clock .date { color: rgba(245, 245, 247, 0.62); }
+.no-picks #title, .no-picks #tabs { display: none; }
+#sky .hour { opacity: 0; }
+#sky .sun {
+  position: absolute; left: 50%; top: 30%; width: 1230px; height: 1230px; margin: -615px 0 0 -615px;
+  background: -webkit-radial-gradient(center, circle, rgba(255, 240, 200, 1), rgba(255, 240, 200, 0) 70%);
+  background: radial-gradient(circle, rgba(255, 240, 200, 1), rgba(255, 240, 200, 0) 70%);
+}
+.no-picks #sky .hour { opacity: 1; }
+/* Dark theme (or night): the same sky, much deeper. */
+#sky .shade { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #05060A; opacity: 0; -webkit-transition: opacity 2s; transition: opacity 2s; }
+.night #sky .shade { opacity: 0.72; }
+.no-picks #sky .veil { background: transparent; }
 
 /* MARK: - Shelf: the glass bar with the apps, each in its brand color; focused, a tile grows 20% and rises. */
 

@@ -130,11 +130,11 @@ var TV = (function () {
   var SAMSUNG_VIEWER = 'org.tizen.tv-viewer';
 
   var SAMPLE = [
-    ['netflix', 'Netflix', '#E50914'], ['youtube.leanback.v4', 'YouTube', '#FF0033'], ['amazon', 'Prime Video', '#1A98FF'],
-    ['com.disney.disneyplus-prod', 'Disney+', '#1838C8'], ['com.hbo.hbomax', 'Max', '#6C3BE0'],
-    ['com.apple.appletv', 'Apple TV', '#B8BCC6'], ['globoplaywebos', 'Globoplay', '#FF5A1F'], ['spotify-beehive', 'Spotify', '#1DB954'],
-    ['cdp-30', 'Plex', '#E5A00D'], ['com.crunchyroll.webapp', 'Crunchyroll', '#F47521'], ['com.webos.app.browser', 'Web Browser', '#3A7BD5'],
-    ['com.palm.app.settings', 'Settings', '#8E8E93']
+    ['netflix', 'Netflix', '#E50914', 'icons/netflix.svg'], ['youtube.leanback.v4', 'YouTube', '#FF0033', 'icons/youtube.png'], ['amazon', 'Prime Video', '#1A98FF', 'icons/prime.png'],
+    ['canalplus', 'Canal+', '#000000'], ['com.disney.disneyplus-prod', 'Disney+', '#1838C8'], ['com.hbo.hbomax', 'Max', '#6C3BE0', 'icons/max.svg'],
+    ['com.apple.appletv', 'Apple TV', '#B8BCC6', 'icons/appletv.svg'], ['globoplaywebos', 'Globoplay', '#FF5A1F'], ['spotify-beehive', 'Spotify', '#1DB954', 'icons/spotify.svg'],
+    ['cdp-30', 'Plex', '#E5A00D', 'icons/plex.svg'], ['com.crunchyroll.webapp', 'Crunchyroll', '#F47521', 'icons/crunchyroll.svg'], ['com.webos.app.browser', 'Web Browser', '#3A7BD5', 'icons/browser.svg'],
+    ['paramountplus', 'Paramount+', '#0064FF', 'icons/paramount.svg'], ['com.palm.app.settings', 'Settings', '#8E8E93', 'icons/settings.svg']
   ];
 
   // Newer webOS (11 tested) denies listLaunchPoints to Developer Mode apps, but still answers getAppLoadStatus for
@@ -274,7 +274,7 @@ var TV = (function () {
     apps: function (done) {
       if (samsung) { samsungApps(done); return; }
       if (!webos) {
-        done(SAMPLE.map(function (s) { return {id: s[0], title: s[1], icon: '', color: s[2]}; }));
+        done(SAMPLE.map(function (s) { return {id: s[0], title: s[1], icon: s[3] || '', color: s[2]}; }));
         return;
       }
       function list(res) {

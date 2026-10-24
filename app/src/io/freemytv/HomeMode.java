@@ -135,7 +135,14 @@ final class HomeMode {
         "com.fengmi.projector.imaging", "com.fengmi.platform", "com.fengmi.Autopair", "com.fengmi.fmsettings",
         "com.fengmi.testsuite", "android.autoinstalls.config.fomovie",
         "uk.co.freeview.tifbridge",
-        "uk.co.freeview.mdsclient", "uk.co.freeview.fvpconfigauth"));
+        "uk.co.freeview.mdsclient", "uk.co.freeview.fvpconfigauth",
+        // Sharp (MTC, MediaTek; Google TV 14): Bluetooth, keys, live TV and inputs, overlays, boot logo, factory menu,
+        // manual
+        "com.airoha.btd", "com.mediatek.android.tv.mtc.globalkeyoverlay", "com.mediatek.wwtv.tvcenter.mtc.overlay",
+        "com.mediatek.wwtv.tvcenter.mtc_sharp.overlay", "com.mediatek.tv.oneworld.tvcenteroverlay",
+        "com.mediatek.tvinput.overlay", "com.mediatek.tv.inputplayeroverlay", "com.mediatek.overlay.tvservice",
+        "com.mediatek.android.tv.mdns.offload.overlay", "com.mediatek.wwtv.webview", "com.mediatek.bootlogoservice",
+        "com.mediatek.mtc.factory", "com.mtc.emanual", "com.mtc.emanual.overlay.ok"));
 
     /** One switch at a time (jobs can overlap: a boot check and a button press). */
     private static final Object RUN = new Object();
